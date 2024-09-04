@@ -10,7 +10,7 @@ class Horse(Base):
 
     horseId        = Column(String, primary_key=True)
     name           = Column(String, nullable=True)
-    age            = Column(String)
+    age            = Column(String, nullable=True)
     gender         = Column(String)
     furColour      = Column(String)
     origin         = Column(String)
@@ -33,7 +33,7 @@ class Race(Base):
     season      = Column(Integer, primary_key=True)
     raceId      = Column(Integer, primary_key=True)
     date        = Column(Date)
-    classNo     = Column(Integer)
+    classNo     = Column(String)
     location    = Column(Enum("ST", "HV"))
     racetrack   = Column(String)
     distance    = Column(Integer)
@@ -62,10 +62,10 @@ class Participation(Base):
     p4Time        = Column(DECIMAL(precision=4, scale=2), nullable=True)
     p5Time        = Column(DECIMAL(precision=4, scale=2), nullable=True)
     p6Time        = Column(DECIMAL(precision=4, scale=2), nullable=True)
-    penFirst      = Column(DECIMAL(precision=4, scale=2))
-    penSecond     = Column(DECIMAL(precision=4, scale=2))
-    finalFirst    = Column(DECIMAL(precision=4, scale=2))
-    finalSecond   = Column(DECIMAL(precision=4, scale=2))
+    penFirst      = Column(DECIMAL(precision=4, scale=2), nullable=True)
+    penSecond     = Column(DECIMAL(precision=4, scale=2), nullable=True)
+    finalFirst    = Column(DECIMAL(precision=4, scale=2), nullable=True)
+    finalSecond   = Column(DECIMAL(precision=4, scale=2), nullable=True)
     equipment     = Column(String, default="")
 
 
@@ -141,6 +141,46 @@ class DataBase:
         finally:
             session.close()
 
+    def get_all_participations(self):
+        try:
+            session = self.get_session()
+            return session.query(Participation).all()
+        finally:
+            session.close()
+
+    def get_all_participations_for_horse(self, horseId):
+        try:
+            session = self.get_session()
+            return session.query(Participation).filter(horseId == Participation.horseId).all()
+        finally:
+            session.close()
+
+    def get_all_participations_for_rider(self, rider):
+        try: 
+            session = self.get_session()
+            return session.query(Participation).filter(rider == Participation.rider).all()
+        finally: 
+            session.close()
+
+    def get_all_participations_for_race(self, season, raceId):
+        try:
+            session = self.get_session()
+            return session.query(Participation).filter(raceId == Participation.raceId).filter(season == Participation.season).all()
+        finally:
+            session.close()
+
+    def get_all_trainers(self):
+        return set(map(lambda x: x.trainer, self.get_all_horses()))
+
+    def get_all_riders(self):
+        return set(map(lambda x: x.rider, self.get_all_participations()))
+    
+    def get_distance_of_participation(self, p: Participation):
+        season = p.season
+        raceId = p.raceId
+        return self.get_race(season, raceId).distance
+
+
     def store_horse(self, horse_data):
         # updates horse if horse already exist, otherwise create one
         session = self.get_session()
@@ -148,47 +188,51 @@ class DataBase:
         if self.horse_exist(horseId):
             # update
             horse = self.get_horse(horseId)
-            horse.name=horse_data["name"]
-            horse.age=horse_data["age"]
-            horse.gender=horse_data["gender"]
-            horse.furColour=horse_data["furColour"]
-            horse.origin=horse_data["origin"]
-            horse.importType=horse_data["importType"]
-            horse.currentRating=horse_data["currentRating"]
-            horse.startingRating=horse_data["startingRating"]
-            horse.goldCount=horse_data["goldCount"]
-            horse.silverCount=horse_data["silverCount"]
-            horse.bronzeCount=horse_data["bronzeCount"]
-            horse.totalEntries=horse_data["totalEntries"]
-            horse.seasonPrize=horse_data["seasonPrize"]
-            horse.totalPrize=horse_data["totalPrize"]
-            horse.trainer=horse_data["trainer"]
-            horse.url=horse_data["url"],
+            horse.name=horse_data.get("name"),
+            horse.age=horse_data.get("age"),
+            horse.gender=horse_data.get("gender"),
+            horse.furColour=horse_data.get("furColour"),
+            horse.origin=horse_data.get("origin"),
+            horse.importType=horse_data.get("importType"),
+            horse.currentRating=horse_data.get("currentRating"),
+            horse.startingRating=horse_data.get("startingRating"),
+            horse.goldCount=horse_data.get("goldCount"),
+            horse.silverCount=horse_data.get("silverCount"),
+            horse.bronzeCount=horse_data.get("bronzeCount"),
+            horse.totalEntries=horse_data.get("totalEntries"),
+            horse.seasonPrize=horse_data.get("seasonPrize"),
+            horse.totalPrize=horse_data.get("totalPrize"),
+            horse.trainer=horse_data.get("trainer"),
+            horse.url=horse_data.get("url"),
             
             session.commit()
+
+            return horse
         else:
             # create
             new_horse = Horse(
                 horseId=horseId,
-                name=horse_data["name"],
-                age=horse_data["age"],
-                gender=horse_data["gender"],
-                furColour=horse_data["furColour"],
-                origin=horse_data["origin"],
-                importType=horse_data["importType"],
-                currentRating=horse_data["currentRating"],
-                startingRating=horse_data["startingRating"],
-                goldCount=horse_data["goldCount"],
-                silverCount=horse_data["silverCount"],
-                bronzeCount=horse_data["bronzeCount"],
-                totalEntries=horse_data["totalEntries"],
-                seasonPrize=horse_data["seasonPrize"],
-                totalPrize=horse_data["totalPrize"],
-                trainer=horse_data["trainer"],
-                url=horse_data["url"],
+                name=horse_data.get("name"),
+                age=horse_data.get("age"),
+                gender=horse_data.get("gender"),
+                furColour=horse_data.get("furColour"),
+                origin=horse_data.get("origin"),
+                importType=horse_data.get("importType"),
+                currentRating=horse_data.get("currentRating"),
+                startingRating=horse_data.get("startingRating"),
+                goldCount=horse_data.get("goldCount"),
+                silverCount=horse_data.get("silverCount"),
+                bronzeCount=horse_data.get("bronzeCount"),
+                totalEntries=horse_data.get("totalEntries"),
+                seasonPrize=horse_data.get("seasonPrize"),
+                totalPrize=horse_data.get("totalPrize"),
+                trainer=horse_data.get("trainer"),
+                url=horse_data.get("url"),
             )
             session.add(new_horse)
             session.commit()
+
+            return new_horse
 
 
     def store_race(self, race_data):
@@ -209,6 +253,8 @@ class DataBase:
             
             race.url=race_data["url"]
             session.commit()
+            
+            return race
         else:
             # create race
             new_race = Race(
@@ -224,6 +270,8 @@ class DataBase:
             )
             session.add(new_race)
             session.commit()
+
+            return new_race
 
 
     def store_participation(self, participation_data: dict):
@@ -257,6 +305,8 @@ class DataBase:
         
             session.commit()
 
+            return ran
+
         else:
             # create
             new_ran = Participation(
@@ -285,3 +335,6 @@ class DataBase:
 
             session.add(new_ran)
             session.commit()
+
+            return new_ran
+        

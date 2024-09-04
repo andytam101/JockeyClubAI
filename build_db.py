@@ -38,7 +38,7 @@ def get_all_horses(reader: DataReader, db: DataBase, location="HK"):
 
 def get_race(reader: DataReader, db: DataBase, url):
     try:
-        race = reader.read_race_from_url(url)
+        race = reader.read_race(url)
         if race is not None:
             db.store_race(race)
     except Exception as e:
@@ -58,8 +58,9 @@ def get_all_races(reader: DataReader, db: DataBase, start=0):
 
 def get_all_participations_for_race(reader: DataReader, db: DataBase, race: Race):
     url = race.url
-    assert url[-8:-1] == "RaceNo="
-    number = int(url[-1])
+    url_args = url.split("=")
+    assert url_args[-2][-6:] == "RaceNo"
+    number = int(url_args[-1])
     
     # get participation data for all horses
     participations: list[dict] = reader.read_participation_of_race(url)
@@ -90,24 +91,27 @@ def get_all_participations_for_race(reader: DataReader, db: DataBase, race: Race
             logging.error(f"Error getting horse {horseId} participations in raceId={race.raceId}, season={race.season}: {e}. url={url}")
 
 
-def get_all_participations(reader: DataReader, db: DataBase):
-    races = db.get_all_races()
+def get_all_participations(reader: DataReader, db: DataBase, start=0):
+    races = db.get_all_races()[start:]
     for i in tqdm(range(len(races)), desc="Reading participations"):
-        get_all_participations_for_race(reader, db, races[i])
+        try:
+            get_all_participations_for_race(reader, db, races[i])
+        except Exception as e:
+            logging.error(f"Error reading participations: {e}. url={races[i].url}")
 
 
-def main(start=0):
+def main(races_start=0, participations_start=0):
     logging.basicConfig(filename="logs/build_db.log", level=logging.INFO)
     
     print("Preparing database...")
-    db = DataBase(db_path="sqlite:///data.db")
     reader = DataReader()
+    db = DataBase(db_path="sqlite:///data.db")
 
     print("Reading data...")
-    get_all_horses(reader, db, location="HK")
-    get_all_horses(reader, db, location="CH")
-    get_all_races(reader, db, start=start)
-    get_all_participations(reader, db)
+    # get_all_horses(reader, db, location="HK")
+    # get_all_horses(reader, db, location="CH")
+    # get_all_races(reader, db, start=races_start)
+    get_all_participations(reader, db, start=participations_start)
 
 
 if __name__ == "__main__":
